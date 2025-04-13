@@ -1,5 +1,6 @@
 (ns sport-quiz.core
-  (:gen-class))
+  (:gen-class)
+  (:require [sport-quiz.games.equipment :as eq]))
 
 (defn read-int []
   (try
@@ -13,9 +14,46 @@
 
 (defn game-sports-equipment []
   (clear-screen)
-  (println "Sports Equipment Game")
-  (println "Press ENTER to return to the menu.")
-  (read-line))
+
+  (println "Sports Equipment Quiz")
+  (println "You will get 5 questions. Each correct answer gives 1 point.")
+  (println "Press ENTER to begin.")
+  (read-line)
+
+  (let [questions (take 5 (eq/prepare-questions))]
+    (loop [qs questions
+           score 0]
+      (if (empty? qs)
+        (do
+          (clear-screen)
+          (println "Quiz finished!")
+          (println "Your score:" score "/ 5")
+          (println "Press ENTER to return to the menu.")
+          (read-line))
+
+        (let [{:keys [image options answer] :as q} (first qs)]
+          (clear-screen)
+          (println "Image:" image) 
+          (println "Choose the correct equipment:")
+          (doseq [[idx opt] (map-indexed vector options)]
+            (println (str (inc idx) ". " opt)))
+
+          (print "Your choice: ")
+          (flush)
+
+          (let [user-choice (read-int)
+                selected    (get options (dec user-choice))
+                correct?    (eq/evaluate-answer q selected)]
+
+            (if correct?
+              (println "Correct!")
+              (println "Wrong! Correct answer was:" answer))
+
+            (Thread/sleep 1200)
+
+            (recur (rest qs)
+                   (if correct? (inc score) score))))))))
+
 
 (defn game-matching []
   (clear-screen)
