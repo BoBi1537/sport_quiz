@@ -1,6 +1,7 @@
 (ns sport-quiz.core
   (:gen-class)
-  (:require [sport-quiz.games.equipment :as eq]))
+  (:require [sport-quiz.games.equipment :as eq]
+            [sport-quiz.games.matching :as m]))
 
 (defn read-int []
   (try
@@ -57,9 +58,55 @@
 
 (defn game-matching []
   (clear-screen)
+
   (println "Matching Game")
-  (println "Press ENTER to return to the menu.")
-  (read-line))
+  (println "Match the sport with the correct equipment.")
+  (println "You will get 5 pairs.")
+  (println "Press ENTER to begin.")
+  (read-line)
+
+  (let [pairs (take 5 (m/shuffle-pairs))]
+    (loop [ps pairs
+           score 0]
+
+      (if (empty? ps)
+        (do
+          (clear-screen)
+          (println "Game finished!")
+          (println "Your score:" score "/ 5")
+          (println "Press ENTER to return to the menu.")
+          (read-line))
+
+        (let [{:keys [sport equipment] :as pair} (first ps)
+              wrong-options (->> pairs
+                                 (map :equipment)
+                                 (remove #(= % equipment))
+                                 shuffle
+                                 (take 2))
+              displayed (shuffle (conj wrong-options equipment))]
+
+          (clear-screen)
+          (println "Sport:" sport)
+          (println "Choose the correct equipment:")
+          (doseq [[idx opt] (map-indexed vector displayed)]
+            (println (str (inc idx) ". " opt)))
+
+          (print "Your choice: ")
+          (flush)
+
+          (let [choice (read-int)
+                selected (get displayed (dec choice))
+                correct? (m/evaluate-match pair selected)]
+
+            (if correct?
+              (println "Correct!")
+              (println "Wrong! Correct answer:" equipment))
+
+            (Thread/sleep 1200)
+
+            (recur (rest ps)
+                   (if correct? (inc score) score))))))))
+
 
 (defn game-guess-athlete []
   (clear-screen)
