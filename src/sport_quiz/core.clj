@@ -1,7 +1,8 @@
 (ns sport-quiz.core
   (:gen-class)
   (:require [sport-quiz.games.equipment :as eq]
-            [sport-quiz.games.matching :as m]))
+            [sport-quiz.games.matching :as m]
+            [sport-quiz.games.athlete :as a]))
 
 (defn read-int []
   (try
@@ -110,9 +111,50 @@
 
 (defn game-guess-athlete []
   (clear-screen)
-  (println "Guess the Athlete")
-  (println "Press ENTER to return to the menu.")
-  (read-line))
+
+  (println "Guess The Athlete")
+  (println "You will get 5 questions.")
+  (println "Press ENTER to begin.")
+  (read-line)
+
+  (let [questions (take 5 (a/prepare-questions))]
+    (loop [qs questions
+           score 0]
+
+      (if (empty? qs)
+        (do
+          (clear-screen)
+          (println "Game finished!")
+          (println "Your score:" score "/ 5")
+          (println "Press ENTER to return to the menu.")
+          (read-line))
+
+        (let [{:keys [description options answer] :as q} (a/shuffle-question (first qs))]
+          (clear-screen)
+          (println "Description:")
+          (println description)
+          (println)
+          (println "Choose the correct athlete:")
+
+          (doseq [[idx opt] (map-indexed vector options)]
+            (println (str (inc idx) ". " opt)))
+
+          (print "Your choice: ")
+          (flush)
+
+          (let [choice (read-int)
+                selected (get options (dec choice))
+                correct? (a/evaluate-answer q selected)]
+
+            (if correct?
+              (println "Correct!")
+              (println "Wrong! Correct answer:" answer))
+
+            (Thread/sleep 1200)
+
+            (recur (rest qs)
+                   (if correct? (inc score) score))))))))
+
 
 (defn print-menu []
   (clear-screen)
