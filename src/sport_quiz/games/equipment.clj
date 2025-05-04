@@ -21,17 +21,16 @@
     :options ["Baseball Bat" "Cricket Bat" "Golf Club" "Hockey Stick"]
     :answer "Baseball Bat"}])
 
-(defn shuffle-question
-  "Returns a question with shuffled options."
-  [question]
+(defn shuffle-question [question]
   (update question :options shuffle))
 
-(defn prepare-questions
-  "Shuffles all questions and their options."
-  []
+(defn prepare-questions []
   (map shuffle-question (shuffle equipment-questions)))
 
-(defn evaluate-answer
-  "Returns true if the chosen option matches the correct answer."
-  [question chosen]
+(defn evaluate-answer [question chosen]
   (= chosen (:answer question)))
+
+(defn to-engine-question [{:keys [image options answer]}]
+  {:prompt (str "What equipment is shown in the image: " image "?")
+   :options options
+   :answer answer})

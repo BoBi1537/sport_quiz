@@ -1,163 +1,13 @@
 (ns sport-quiz.core
-  (:gen-class)
-  (:require [sport-quiz.games.equipment :as eq]
-            [sport-quiz.games.matching :as m]
-            [sport-quiz.games.athlete :as a]))
-
-(defn read-int []
-  (try
-    (Integer/parseInt (read-line))
-    (catch Exception _ -1)))
-
-(defn clear-screen []
-  (print "\u001b[2J")
-  (print "\u001b[H")
-  (flush))
-
-(defn game-sports-equipment []
-  (clear-screen)
-
-  (println "Sports Equipment Quiz")
-  (println "You will get 5 questions. Each correct answer gives 1 point.")
-  (println "Press ENTER to begin.")
-  (read-line)
-
-  (let [questions (take 5 (eq/prepare-questions))]
-    (loop [qs questions
-           score 0]
-      (if (empty? qs)
-        (do
-          (clear-screen)
-          (println "Quiz finished!")
-          (println "Your score:" score "/ 5")
-          (println "Press ENTER to return to the menu.")
-          (read-line))
-
-        (let [{:keys [image options answer] :as q} (first qs)]
-          (clear-screen)
-          (println "Image:" image) 
-          (println "Choose the correct equipment:")
-          (doseq [[idx opt] (map-indexed vector options)]
-            (println (str (inc idx) ". " opt)))
-
-          (print "Your choice: ")
-          (flush)
-
-          (let [user-choice (read-int)
-                selected    (get options (dec user-choice))
-                correct?    (eq/evaluate-answer q selected)]
-
-            (if correct?
-              (println "Correct!")
-              (println "Wrong! Correct answer was:" answer))
-
-            (Thread/sleep 1200)
-
-            (recur (rest qs)
-                   (if correct? (inc score) score))))))))
-
-
-(defn game-matching []
-  (clear-screen)
-
-  (println "Matching Game")
-  (println "Match the sport with the correct equipment.")
-  (println "You will get 5 pairs.")
-  (println "Press ENTER to begin.")
-  (read-line)
-
-  (let [pairs (take 5 (m/shuffle-pairs))]
-    (loop [ps pairs
-           score 0]
-
-      (if (empty? ps)
-        (do
-          (clear-screen)
-          (println "Game finished!")
-          (println "Your score:" score "/ 5")
-          (println "Press ENTER to return to the menu.")
-          (read-line))
-
-        (let [{:keys [sport equipment] :as pair} (first ps)
-              wrong-options (->> pairs
-                                 (map :equipment)
-                                 (remove #(= % equipment))
-                                 shuffle
-                                 (take 2))
-              displayed (shuffle (conj wrong-options equipment))]
-
-          (clear-screen)
-          (println "Sport:" sport)
-          (println "Choose the correct equipment:")
-          (doseq [[idx opt] (map-indexed vector displayed)]
-            (println (str (inc idx) ". " opt)))
-
-          (print "Your choice: ")
-          (flush)
-
-          (let [choice (read-int)
-                selected (get displayed (dec choice))
-                correct? (m/evaluate-match pair selected)]
-
-            (if correct?
-              (println "Correct!")
-              (println "Wrong! Correct answer:" equipment))
-
-            (Thread/sleep 1200)
-
-            (recur (rest ps)
-                   (if correct? (inc score) score))))))))
-
-
-(defn game-guess-athlete []
-  (clear-screen)
-
-  (println "Guess The Athlete")
-  (println "You will get 5 questions.")
-  (println "Press ENTER to begin.")
-  (read-line)
-
-  (let [questions (take 5 (a/prepare-questions))]
-    (loop [qs questions
-           score 0]
-
-      (if (empty? qs)
-        (do
-          (clear-screen)
-          (println "Game finished!")
-          (println "Your score:" score "/ 5")
-          (println "Press ENTER to return to the menu.")
-          (read-line))
-
-        (let [{:keys [description options answer] :as q} (a/shuffle-question (first qs))]
-          (clear-screen)
-          (println "Description:")
-          (println description)
-          (println)
-          (println "Choose the correct athlete:")
-
-          (doseq [[idx opt] (map-indexed vector options)]
-            (println (str (inc idx) ". " opt)))
-
-          (print "Your choice: ")
-          (flush)
-
-          (let [choice (read-int)
-                selected (get options (dec choice))
-                correct? (a/evaluate-answer q selected)]
-
-            (if correct?
-              (println "Correct!")
-              (println "Wrong! Correct answer:" answer))
-
-            (Thread/sleep 1200)
-
-            (recur (rest qs)
-                   (if correct? (inc score) score))))))))
-
+  (:require [sport-quiz.engine :as engine]
+            [sport-quiz.games.equipment :as equipment]
+            [sport-quiz.games.matching :as matching]
+            [sport-quiz.games.athlete :as athlete]
+            [sport-quiz.ui :as ui])
+  (:gen-class))
 
 (defn print-menu []
-  (clear-screen)
+  (ui/clear-screen)
   (println "==============================")
   (println "         SPORT QUIZ")
   (println "==============================")
@@ -172,12 +22,75 @@
 (defn -main [& _]
   (loop []
     (print-menu)
-    (let [choice (read-int)]
+    (let [choice (ui/read-int)]
       (case choice
-        1 (do (game-sports-equipment) (recur))
-        2 (do (game-matching) (recur))
-        3 (do (game-guess-athlete) (recur))
-        0 (do (println "Goodbye!") (System/exit 0))
-        (do (println "Invalid input. Try again.")
-            (Thread/sleep 1200)
-            (recur))))))
+        1 (do
+            (engine/run-quiz-game
+             {:title "Sports Equipment Quiz"
+              :intro "You will get 5 questions. Each correct answer gives 1 point."
+              :score-per-question 1
+              :question-generator (fn []
+                                    (->> (equipment/prepare-questions)
+                                         (take 5)
+                                         (map equipment/to-engine-question)))
+              :answer-fn equipment/evaluate-answer})
+            (recur))
+        2 (do
+            (ui/clear-screen)
+            (println "Matching Game")
+            (println "Match the sport with the correct equipment.")
+            (println "You will get 5 pairs.")
+            (println "Press ENTER to begin.")
+            (read-line)
+            (let [pairs (take 5 (matching/shuffle-pairs))]
+              (loop [ps pairs
+                     score 0]
+                (if (empty? ps)
+                  (do
+                    (ui/clear-screen)
+                    (println "Game finished!")
+                    (println "Your score:" score "/ 5")
+                    (println "Press ENTER to return to the menu.")
+                    (read-line))
+                  (let [{:keys [sport equipment] :as pair} (first ps)
+                        wrong-options (->> ps
+                                           (map :equipment)
+                                           (remove #(= % equipment))
+                                           shuffle
+                                           (take 2))
+                        displayed (shuffle (conj wrong-options equipment))]
+                    (ui/clear-screen)
+                    (println "Sport:" sport)
+                    (println "Choose the correct equipment:")
+                    (doseq [[idx opt] (map-indexed vector displayed)]
+                      (println (str (inc idx) ". " opt)))
+                    (print "Your choice: ")
+                    (flush)
+                    (let [choice (ui/read-int)
+                          selected (get displayed (dec choice))
+                          correct? (matching/evaluate-match pair selected)]
+                      (if correct?
+                        (println "Correct!")
+                        (println "Wrong! Correct answer:" equipment))
+                      (Thread/sleep 1200)
+                      (recur (rest ps)
+                             (if correct? (inc score) score)))))))
+            (recur))
+        3 (do
+            (engine/run-quiz-game
+             {:title "Guess The Athlete"
+              :intro "You will get 5 questions."
+              :score-per-question 2
+              :question-generator (fn []
+                                    (->> (athlete/prepare-questions)
+                                         (take 5)
+                                         (map athlete/to-engine-question)))
+              :answer-fn athlete/evaluate-answer})
+            (recur))
+        0 (do
+            (println "Goodbye!")
+            (System/exit 0))
+        (do
+          (println "Invalid input. Try again.")
+          (Thread/sleep 1200)
+          (recur))))))

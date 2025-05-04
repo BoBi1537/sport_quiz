@@ -10,8 +10,7 @@
 
 (facts "prepare-questions"
        (fact "returns all questions"
-             (count (eq/prepare-questions))
-             => (count eq/equipment-questions)))
+             (count (eq/prepare-questions)) => (count eq/equipment-questions)))
 
 (facts "evaluate-answer"
        (fact "returns true for correct answer"
@@ -21,3 +20,11 @@
        (fact "returns false for incorrect answer"
              (let [q (first eq/equipment-questions)]
                (eq/evaluate-answer q "Not the answer") => false)))
+
+(facts "to-engine-question"
+       (fact "creates engine-compatible question map"
+             (let [q (first eq/equipment-questions)
+                   e (eq/to-engine-question q)]
+               (:prompt e) => truthy
+               (:options e) => (:options q)
+               (:answer e) => (:answer q))))

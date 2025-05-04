@@ -33,3 +33,8 @@
 
 (defn evaluate-answer [q user-choice]
   (= (:answer q) user-choice))
+
+(defn to-engine-question [q]
+  {:prompt (:description q)
+   :options (:options q)
+   :answer (:answer q)})

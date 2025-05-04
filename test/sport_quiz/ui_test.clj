@@ -1,14 +1,16 @@
-(ns sport-quiz.core-test
+(ns sport-quiz.ui-test
   (:require [midje.sweet :refer :all]
-            [sport-quiz.core :as core]))
+            [sport-quiz.ui :as ui]))
 
 (facts "read-int"
        (fact "parses a valid integer"
              (with-in-str "42\n"
-               (core/read-int)) => 42)
+               (ui/read-int)) => 42)
+
        (fact "returns -1 for invalid input"
              (with-in-str "abc\n"
-               (core/read-int)) => -1)
+               (ui/read-int)) => -1)
+
        (fact "returns -1 for empty input"
              (with-in-str "\n"
-               (core/read-int)) => -1))
+               (ui/read-int)) => -1))
