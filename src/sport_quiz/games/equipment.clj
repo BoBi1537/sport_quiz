@@ -34,3 +34,16 @@
   {:prompt (str "What equipment is shown in the image: " image "?")
    :options options
    :answer answer})
+
+
+(def equipment-game
+  (let [prepare-fn prepare-questions
+        to-eng to-engine-question
+        eval-fn evaluate-answer]
+    {:id :equipment
+     :title "Sports Equipment Quiz"
+     :intro "You will get 5 questions. Each correct answer gives 1 point."
+     :prepare-fn prepare-fn
+     :to-engine-fn to-eng
+     :evaluate-fn eval-fn
+     :score-per-question 1}))

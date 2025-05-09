@@ -38,3 +38,12 @@
   {:prompt (:description q)
    :options (:options q)
    :answer (:answer q)})
+
+(def athlete-game
+  {:id :athlete
+   :title "Guess The Athlete"
+   :intro "You will get 5 questions."
+   :prepare-fn prepare-questions
+   :to-engine-fn to-engine-question
+   :evaluate-fn evaluate-answer
+   :score-per-question 2})

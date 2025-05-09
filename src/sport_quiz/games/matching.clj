@@ -13,3 +13,11 @@
 
 (defn evaluate-match [pair user-choice]
   (= (:equipment pair) user-choice))
+
+(def matching-game
+  {:id :matching
+   :title "Matching Game"
+   :intro "Match the sport with the correct equipment."
+   :prepare-fn shuffle-pairs
+   :evaluate-fn evaluate-match
+   :score-per-question 2})
