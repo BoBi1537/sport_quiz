@@ -3,6 +3,7 @@
             [sport-quiz.games.equipment :as equipment]
             [sport-quiz.games.matching :as matching]
             [sport-quiz.games.athlete :as athlete]
+            [sport-quiz.game :as game]
             [sport-quiz.ui :as ui])
   (:gen-class))
 
@@ -26,20 +27,18 @@
       (case choice
         1 (do
             (engine/run-quiz-game
-             {:title "Sports Equipment Quiz"
-              :intro "You will get 5 questions. Each correct answer gives 1 point."
-              :score-per-question 1
+             {:title (:title equipment/equipment-game)
+              :intro (:intro equipment/equipment-game)
+              :score-per-question (:score-per-question equipment/equipment-game)
               :question-generator (fn []
-                                    (->> (equipment/prepare-questions)
-                                         (take 5)
-                                         (map equipment/to-engine-question)))
-              :answer-fn equipment/evaluate-answer})
+                                    (game/question-generator equipment/equipment-game 5))
+              :answer-fn (fn [q sel]
+                           (game/evaluate equipment/equipment-game q sel))})
             (recur))
         2 (do
             (ui/clear-screen)
-            (println "Matching Game")
-            (println "Match the sport with the correct equipment.")
-            (println "You will get 5 pairs.")
+            (println (:title matching/matching-game))
+            (println (:intro matching/matching-game))
             (println "Press ENTER to begin.")
             (read-line)
             (let [pairs (take 5 (matching/shuffle-pairs))]
@@ -78,14 +77,13 @@
             (recur))
         3 (do
             (engine/run-quiz-game
-             {:title "Guess The Athlete"
-              :intro "You will get 5 questions."
-              :score-per-question 2
+             {:title (:title athlete/athlete-game)
+              :intro (:intro athlete/athlete-game)
+              :score-per-question (:score-per-question athlete/athlete-game)
               :question-generator (fn []
-                                    (->> (athlete/prepare-questions)
-                                         (take 5)
-                                         (map athlete/to-engine-question)))
-              :answer-fn athlete/evaluate-answer})
+                                    (game/question-generator athlete/athlete-game 5))
+              :answer-fn (fn [q sel]
+                           (game/evaluate athlete/athlete-game q sel))})
             (recur))
         0 (do
             (println "Goodbye!")
