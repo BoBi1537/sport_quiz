@@ -25,25 +25,21 @@
     :answer "Novak Djokovic"
     :options ["Novak Djokovic" "Roger Federer" "Rafael Nadal" "Stan Wawrinka"]}])
 
-(defn shuffle-question [q]
-  (update q :options shuffle))
-
 (defn prepare-questions []
   (shuffle athlete-questions))
 
-(defn evaluate-answer [q user-choice]
-  (= (:answer q) user-choice))
+(defn evaluate-answer [question chosen]
+  (= chosen (:answer question)))
 
-(defn to-engine-question [q]
-  {:prompt (:description q)
-   :options (:options q)
-   :answer (:answer q)})
+(defn to-engine-question [{:keys [description options]}]
+  {:prompt description
+   :options options})
 
 (def athlete-game
   {:id :athlete
-   :title "Guess The Athlete"
-   :intro "You will get 5 questions."
+   :title "Athlete Quiz"
+   :intro "Guess the athlete based on description."
    :prepare-fn prepare-questions
    :to-engine-fn to-engine-question
    :evaluate-fn evaluate-answer
-   :score-per-question 2})
+   :score-per-question 1})

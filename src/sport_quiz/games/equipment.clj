@@ -30,20 +30,15 @@
 (defn evaluate-answer [question chosen]
   (= chosen (:answer question)))
 
-(defn to-engine-question [{:keys [image options answer]}]
-  {:prompt (str "What equipment is shown in the image: " image "?")
-   :options options
-   :answer answer})
-
+(defn to-engine-question [{:keys [image options]}]
+  {:prompt (str "Which equipment is shown in image: " image "?")
+   :options options})
 
 (def equipment-game
-  (let [prepare-fn prepare-questions
-        to-eng to-engine-question
-        eval-fn evaluate-answer]
-    {:id :equipment
-     :title "Sports Equipment Quiz"
-     :intro "You will get 5 questions. Each correct answer gives 1 point."
-     :prepare-fn prepare-fn
-     :to-engine-fn to-eng
-     :evaluate-fn eval-fn
-     :score-per-question 1}))
+  {:id :equipment
+   :title "Sports Equipment Quiz"
+   :intro "Guess the equipment based on the picture."
+   :prepare-fn prepare-questions
+   :to-engine-fn to-engine-question
+   :evaluate-fn evaluate-answer
+   :score-per-question 1})

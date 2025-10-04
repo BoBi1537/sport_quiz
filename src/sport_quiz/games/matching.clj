@@ -8,16 +8,21 @@
    {:sport "Baseball" :equipment "Bat"}
    {:sport "Hockey" :equipment "Stick"}])
 
-(defn shuffle-pairs []
+(defn prepare-pairs []
   (shuffle matching-pairs))
 
-(defn evaluate-match [pair user-choice]
-  (= (:equipment pair) user-choice))
+(defn evaluate-match [pair choice]
+  (= (:equipment pair) choice))
+
+(defn to-engine-question [{:keys [sport equipment]}]
+  {:prompt (str "Which equipment belongs to " sport "?")
+   :options ["Racket" "Ball" "Hoop" "Gloves" "Bat" "Stick"]})
 
 (def matching-game
   {:id :matching
    :title "Matching Game"
-   :intro "Match the sport with the correct equipment."
-   :prepare-fn shuffle-pairs
+   :intro "Match sport with correct equipment."
+   :prepare-fn prepare-pairs
+   :to-engine-fn to-engine-question
    :evaluate-fn evaluate-match
    :score-per-question 2})

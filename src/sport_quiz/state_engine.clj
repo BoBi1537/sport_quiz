@@ -1,36 +1,39 @@
-(ns sport-quiz.state-engine
-  (:require [sport-quiz.game :as game]))
+(ns sport-quiz.state-engine)
 
-(defn start-game
-  "Creates an initial game state for N questions."
-  [game-descriptor n]
-  {:game game-descriptor
-   :questions (vec (game/question-generator game-descriptor n))
-   :current-index 0
-   :score 0
-   :finished? false})
-
-(defn current-question
-  "Returns the question at the current index."
-  [state]
-  (get (:questions state) (:current-index state)))
-
-(defn game-over?
-  [state]
-  (:finished? state))
+(defn start-game [game n]
+  (let [raw-q (take n ((:prepare-fn game)))
+        engine-q (map (:to-engine-fn game) raw-q)]
+    {:game-id (:id game)
+     :raw-questions (vec raw-q)
+     :questions (vec engine-q)
+     :current-index 0
+     :score 0
+     :completed? false
+     :score-per-question (:score-per-question game)
+     :evaluate-fn (:evaluate-fn game)}))
 
 (defn submit-answer
-  "Evaluates answer for the current question.
-   Returns {:correct? bool :new-state <updated-state>}."
-  [state user-answer]
-  (let [game-desc (:game state)
-        q (current-question state)
-        correct? (game/evaluate game-desc q user-answer)
-        new-score (if correct? (inc (:score state)) (:score state))
-        last? (= (inc (:current-index state)) (count (:questions state)))
-        new-state (-> state
-                      (assoc :score new-score)
-                      (update :current-index inc)
-                      (assoc :finished? last?))]
+  "Evaluates answer, moves to next question."
+  [{:keys [current-index raw-questions score score-per-question] :as state} user-answer]
+  (let [current-raw (nth raw-questions current-index)
+        correct? ((:evaluate-fn state) current-raw user-answer)
+        new-score (if correct?
+                    (+ score score-per-question)
+                    score)
+        last? (= (inc current-index) (count raw-questions))
+        new-state (assoc state
+                         :current-index (inc current-index)
+                         :score new-score
+                         :completed? last?)]
     {:correct? correct?
      :new-state new-state}))
+
+(defn api-state
+  "Return a frontend-friendly view of the current state."
+  [{:keys [questions current-index score completed?]}]
+  (let [q (nth questions current-index nil)
+        total (count questions)]
+    {:current-question q
+     :score score
+     :progress (if (pos? total) (/ current-index total) 0)
+     :completed? completed?}))

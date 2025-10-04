@@ -1,0 +1,75 @@
+(ns sport-quiz.server
+  (:require [org.httpkit.server :as http]
+            [compojure.core :refer [defroutes GET POST]]
+            [compojure.route :as route]
+            [ring.middleware.defaults :refer [wrap-defaults api-defaults]]
+            [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
+            [sport-quiz.state-engine :as se]
+            [sport-quiz.games.equipment :as equipment]
+            [sport-quiz.games.athlete :as athlete]
+            [sport-quiz.games.matching :as matching]))
+
+(defonce sessions (atom {}))
+
+(defn gen-session-id []
+  (str (java.util.UUID/randomUUID)))
+
+(defn safe-get-session [sid]
+  (get @sessions sid))
+
+(def games
+  {:equipment equipment/equipment-game
+   :athlete athlete/athlete-game
+   :matching matching/matching-game})
+
+(defn do-start [{:keys [game n] :or {n 5}}]
+  (let [g (games (keyword game))]
+    (if (nil? g)
+      {:error "Unknown game id"}
+      (let [sid (gen-session-id)
+            state (se/start-game g n)]
+        (swap! sessions assoc sid state)
+        {:session-id sid
+         :state (-> state
+                    (dissoc :evaluate-fn))}))))
+
+
+(defn do-answer [{:keys [session-id answer]}]
+  (if-let [st (safe-get-session session-id)]
+    (let [{:keys [correct? new-state]} (se/submit-answer st answer)]
+      (swap! sessions assoc session-id new-state)
+      {:correct? correct? :state (-> new-state (dissoc :evaluate-fn))})
+    {:error "Unknown session-id"}))
+
+(defroutes routes
+  (POST "/api/start" req
+    (let [res (do-start (:body req))]
+      {:status (if (:error res) 400 200)
+       :body res}))
+
+  (POST "/api/answer" req
+    (let [res (do-answer (:body req))]
+      {:status (if (:error res) 400 200)
+       :body res}))
+
+  (GET "/api/session/:id" [id]
+    (if-let [st (safe-get-session id)]
+      {:status 200 :body {:session-id id :state (dissoc st :evaluate-fn)}}
+      {:status 404 :body {:error "Not found"}}))
+
+
+  (route/not-found {:status 404 :body {:error "Not Found"}}))
+
+(def app
+  (-> routes
+      (wrap-json-body {:keywords? true})
+      wrap-json-response
+      (wrap-defaults api-defaults)))
+
+(defn start-server [& {:keys [port] :or {port 3000}}]
+  (println "Starting server on port" port)
+  (http/run-server app {:port port}))
+
+(defn -main [& _]
+  (start-server)
+  (println "Sport Quiz server running on http://localhost:3000"))
