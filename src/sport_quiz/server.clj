@@ -30,15 +30,14 @@
             state (se/start-game g n)]
         (swap! sessions assoc sid state)
         {:session-id sid
-         :state (-> state
-                    (dissoc :evaluate-fn))}))))
-
+         :state (se/api-state state)}))))
 
 (defn do-answer [{:keys [session-id answer]}]
   (if-let [st (safe-get-session session-id)]
     (let [{:keys [correct? new-state]} (se/submit-answer st answer)]
       (swap! sessions assoc session-id new-state)
-      {:correct? correct? :state (-> new-state (dissoc :evaluate-fn))})
+      {:correct? correct?
+       :state (se/api-state new-state)})
     {:error "Unknown session-id"}))
 
 (defroutes routes
@@ -54,10 +53,8 @@
 
   (GET "/api/session/:id" [id]
     (if-let [st (safe-get-session id)]
-      {:status 200 :body {:session-id id :state (dissoc st :evaluate-fn)}}
+      {:status 200 :body {:session-id id :state (se/api-state st)}}
       {:status 404 :body {:error "Not found"}}))
-
-
   (route/not-found {:status 404 :body {:error "Not Found"}}))
 
 (def app
