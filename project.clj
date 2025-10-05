@@ -3,6 +3,7 @@
   :url "http://localhost:3000"
 
   :dependencies [[org.clojure/clojure "1.11.1"]
+                 [reagent "1.2.0"]
                  [ring/ring-core "1.10.0"]
                  [ring/ring-defaults "0.3.4"]
                  [ring/ring-json "0.5.1"]
@@ -11,7 +12,17 @@
                  [cheshire "5.11.0"]
                  [midje "1.10.9"]]
 
-  :plugins [[lein-midje "3.2.2"]]
+  :plugins [[lein-midje "3.2.2"]
+            [lein-cljsbuild "1.1.8"]]
+
+  :cljsbuild
+  {:builds
+   {:app
+    {:source-paths ["src-cljs"]
+     :compiler {:output-to "resources/public/js/app.js"
+                :output-dir "resources/public/js/out"
+                :optimizations :whitespace
+                :pretty-print true}}}}
 
   :main sport-quiz.server
 
