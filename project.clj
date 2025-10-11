@@ -1,16 +1,18 @@
 (defproject sport-quiz "0.1.0-SNAPSHOT"
   :description "Sport Quiz - Clojure web + cljs game"
-  :url "http://localhost:3000"
+  :url "http://localhost:3000/"
 
-  :dependencies [[org.clojure/clojure "1.11.1"]
-                 [reagent "1.2.0"]
-                 [ring/ring-core "1.10.0"]
+  :dependencies [[org.clojure/clojure "1.12.3"]
+                 [reagent "2.0.1"]
+                 [ring/ring-core "1.15.3"]
                  [ring/ring-defaults "0.3.4"]
                  [ring/ring-json "0.5.1"]
-                 [compojure "1.6.2"]
-                 [http-kit "2.6.0"]
-                 [cheshire "5.11.0"]
-                 [midje "1.10.9"]]
+                 [compojure "1.7.2"]
+                 [http-kit "2.8.1"]
+                 [cheshire "5.11.0"]]
+
+  :profiles {:dev {:dependencies [[javax.servlet/javax.servlet-api "4.0.1"]]}
+             :test {:dependencies [[midje "1.10.10"]]}}
 
   :plugins [[lein-midje "3.2.2"]
             [lein-cljsbuild "1.1.8"]]
@@ -28,4 +30,4 @@
 
   :target-path "target/%s"
 
-  :profiles {:uberjar {:aot :all}})
+  :uberjar {:aot :all})
