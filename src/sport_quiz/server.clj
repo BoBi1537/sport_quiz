@@ -35,9 +35,15 @@
 
 (defn do-answer [{:keys [session-id answer]}]
   (if-let [st (safe-get-session session-id)]
-    (let [{:keys [correct? new-state]} (se/submit-answer st answer)]
+    (let [current-raw-q (nth (:raw-questions st) (:current-index st))
+          {:keys [correct? new-state]} (se/submit-answer st answer)
+          answer-display (if correct?
+                           nil
+                           (:answer current-raw-q)) 
+          ]
       (swap! sessions assoc session-id new-state)
       {:correct? correct?
+       :correct-answer answer-display 
        :state (se/api-state new-state)})
     {:error "Unknown session-id"}))
 
