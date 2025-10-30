@@ -10,7 +10,8 @@
                  [compojure "1.7.2"]
                  [http-kit "2.8.1"]
                  [cheshire "5.11.0"]
-                 [org.clojure/java.jdbc "0.7.12"]]
+                 [mysql/mysql-connector-java "8.0.33"]
+                 [migratus "1.6.4"]]
 
   :profiles {:dev {:dependencies [[javax.servlet/javax.servlet-api "4.0.1"]]}
              :test {:dependencies [[midje "1.10.10"]]}}
