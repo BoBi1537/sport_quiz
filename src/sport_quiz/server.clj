@@ -8,7 +8,8 @@
             [sport-quiz.state-engine :as se]
             [sport-quiz.games.equipment :as equipment]
             [sport-quiz.games.athlete :as athlete]
-            [sport-quiz.games.matching :as matching]))
+            [sport-quiz.games.matching :as matching]
+            [sport-quiz.db.core :as db]))
 
 (defonce sessions (atom {}))
 
@@ -71,6 +72,7 @@
       (wrap-defaults (assoc-in site-defaults [:security :anti-forgery] false))))
 
 (defn start-server [& {:keys [port] :or {port 3000}}]
+  (db/init-db)
   (http/run-server app {:port port}))
 
 (defn -main [& _]
