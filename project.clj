@@ -10,7 +10,7 @@
                  [compojure "1.7.2"]
                  [http-kit "2.8.1"]
                  [cheshire "5.11.0"]
-                 [mysql/mysql-connector-java "8.0.33"]
+                 [com.mysql/mysql-connector-j "9.5.0"]
                  [migratus "1.6.4"]]
 
   :profiles {:dev {:dependencies [[javax.servlet/javax.servlet-api "4.0.1"]]}
