@@ -1,9 +1,13 @@
 -- 20251031002135-initial-schema.down.sql
 
-DROP TABLE session_answer;
+DROP TABLE IF EXISTS session_answer;
 --;;
-DROP TABLE player_session;
+DROP TABLE IF EXISTS player_session;
 --;;
-DROP TABLE game_session;
+DROP INDEX IF EXISTS idx_player_session_session_id ON player_session;
 --;;
-DROP TABLE question;
+DROP TABLE IF EXISTS game_session;
+--;;
+DROP INDEX IF EXISTS idx_question_game_id ON question;
+--;;
+DROP TABLE IF EXISTS question;

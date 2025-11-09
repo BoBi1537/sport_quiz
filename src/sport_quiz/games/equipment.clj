@@ -1,4 +1,5 @@
-(ns sport-quiz.games.equipment)
+(ns sport-quiz.games.equipment
+  (:require [clojure.tools.logging :as log]))
 
 (def equipment-questions
   [{:image "ball.png"
@@ -31,6 +32,8 @@
   (= chosen (:answer question)))
 
 (defn to-engine-question [{:keys [image options]}]
+  (log/info "Inside to-engine-question in equipment: " {:prompt (str "Which equipment is shown in image: " image "?")
+                                                       :options options})
   {:prompt (str "Which equipment is shown in image: " image "?")
    :options options})
 
