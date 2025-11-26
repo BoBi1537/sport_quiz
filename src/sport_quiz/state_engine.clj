@@ -69,23 +69,29 @@
       (let [{:keys [question_order current_index score score_per_question evaluate-fn completed?]} state
             qid (nth question_order current_index)
             raw-q (q/get-question-by-id tx qid)
-            correct? (evaluate-fn raw-q user-answer)
+            answer-provided? (not (nil? user-answer))
+            correct? (if answer-provided?
+                       (evaluate-fn raw-q user-answer)
+                       false)
             new-score (if correct? (+ score score_per_question) score)
             last? (= (inc current_index) (count question_order))
             updated-state (-> state
                               (assoc :score new-score)
                               (assoc :current_index (inc current_index))
                               (assoc :completed? last?)
-                              (dissoc :evaluate-fn :to-engine-fn))
+                              (dissoc :evaluate-fn :to-engine-fn :session-id))
 
             _ (q/update-session-state! tx session-id updated-state)
             next-q (when-not last?
                      (q/get-question-by-id tx (nth question_order (inc current_index))))
             next-api-q (when next-q
                          ((:to-engine-fn (game-specs (keyword (:game_id state))))
-                          next-q))]
+                          next-q))
+            correct-answer-for-display (:answer raw-q)]
+
         {:correct? correct?
-         :new-state (api-state (assoc updated-state :session-id session-id)
-                               next-api-q)
-         :raw-question raw-q})
+         :new-state (api-state updated-state next-api-q)
+         :raw-question raw-q
+         :correct-answer correct-answer-for-display})
+
       {:error "Unknown session-id"})))
