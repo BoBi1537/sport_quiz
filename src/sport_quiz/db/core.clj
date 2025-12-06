@@ -36,9 +36,8 @@
    (map #(assoc % :game-id "athlete") athlete/athlete-questions)
    (map (fn [p]
           {:game-id "matching"
-           :prompt (:sport p)
-           :options (map :equipment matching/matching-pairs)
-           :answer (:equipment p)})
+           :prompt (:prompt p)
+           :answer (:answer p)})
         matching/matching-pairs)))
 
 (defn seed-questions
