@@ -10,23 +10,28 @@
 
 (def game-specs
   {:equipment eq/equipment-game
-   :athlete   ath/athlete-game
-   :matching  mat/matching-game})
-
+   :athlete  ath/athlete-game
+   :matching mat/matching-game})
 (defn api-state
   "Return a shape for frontend:
-  {:game-id ..., :current-question ..., :score ..., :progress ..., :completed? ..., :index ..., :total ...}"
-  [{:keys [game_id current_index question_order score completed?] :as full-state}
+ {:game-id ..., :current-question ..., :score ..., :progress ..., :completed? ..., :index ..., :total ...}"
+  [{:keys [game_id current_index question_order score completed? game-specific-data] :as full-state}
    current-question]
-  (let [total (count question_order)]
+  (let [total (count question_order)
+        progress-index (if (= (keyword game_id) :matching)
+                         (:attempts-count game-specific-data 0)
+                         current_index)
+        total-q (if (= (keyword game_id) :matching)
+                  (:total-pairs game-specific-data 0)
+                  total)]
     (log/info "Inside api-state: " full-state)
     {:game-id (keyword game_id)
      :score score
      :completed? completed?
-     :progress (if (pos? total) (/ current_index total) 0)
+     :progress (if (pos? total-q) (/ progress-index total-q) 0)
      :current-question current-question
-     :index current_index
-     :total total}))
+     :index progress-index
+     :total total-q}))
 
 (defn start-game-db [game-spec n]
   (jdbc/with-transaction [tx db-core/ds]
@@ -49,7 +54,10 @@
                          :game-specific-data (when (= game-id :matching)
                                                {:raw-questions raw-data
                                                 :solved-pairs []
-                                                :total-pairs n})}
+                                                :total-pairs n
+                                                :attempts-count 0})
+                         }
+
           session-id (q/create-session! tx "single" initial-state)]
       (log/info "Inside start-game-db after let init")
       {:session-id session-id
@@ -77,8 +85,7 @@
   (jdbc/with-transaction [tx db-core/ds]
     (if-let [state (get-state-by-id session-id)]
       (let [{:keys [game_id question_order current_index score game-specific-data evaluate-fn to-engine-fn]
-             score_per-question :score_per-question
-             }state
+             score_per-question :score_per-question} state
             game-key (keyword game_id)
             [raw-q next-q] (if (= game-key :matching)
                              [(:raw-questions game-specific-data) nil]
@@ -89,17 +96,28 @@
                        (evaluate-fn raw-q user-answer)
                        false)
             updated-state (if (= game-key :matching)
-                            (let [solved-pairs (:solved-pairs game-specific-data)
-                                  total-pairs (:total-pairs game-specific-data)
-                                  new-solved-pairs (if correct? (conj solved-pairs user-answer) solved-pairs)
-                                  new-score (if correct? (+ score score_per-question) score)
-                                  is-complete (>= (count new-solved-pairs) total-pairs)
-                                  updated-gsp (assoc game-specific-data :solved-pairs new-solved-pairs)]
-                              (-> state
-                                  (assoc :score new-score)
-                                  (assoc :completed? is-complete)
-                                  (assoc :game-specific-data updated-gsp)
-                                  (dissoc :evaluate-fn :to-engine-fn :current-question :session-id)))
+                            (if (nil? user-answer)
+                              (let [total-pairs (:total-pairs game-specific-data 0)
+                                    updated-gsp (assoc game-specific-data :attempts-count total-pairs)]
+                                (-> state
+                                    (assoc :completed? true)
+                                    (assoc :game-specific-data updated-gsp)
+                                    (dissoc :evaluate-fn :to-engine-fn :current-question :session-id)))
+                              (let [solved-pairs (:solved-pairs game-specific-data)
+                                    total-pairs (:total-pairs game-specific-data)
+                                    attempts-count (:attempts-count game-specific-data 0)
+                                    new-solved-pairs (if correct? (conj solved-pairs user-answer) solved-pairs)
+                                    new-score (if correct? (+ score score_per-question) score)
+                                    new-attempts-count (inc attempts-count)
+                                    is-complete (>= new-attempts-count total-pairs)
+                                    updated-gsp (-> game-specific-data
+                                                    (assoc :solved-pairs new-solved-pairs)
+                                                    (assoc :attempts-count new-attempts-count))]
+                                (-> state
+                                    (assoc :score new-score)
+                                    (assoc :completed? is-complete)
+                                    (assoc :game-specific-data updated-gsp)
+                                    (dissoc :evaluate-fn :to-engine-fn :current-question :session-id))))
                             (let [new-score (if correct? (+ score score_per-question) score)
                                   last? (= (inc current_index) (count question_order))]
                               (-> state
@@ -114,9 +132,11 @@
                          (if (= game-key :matching)
                            (to-engine-fn (:raw-questions (:game-specific-data updated-state)))
                            ((:to-engine-fn (game-specs game-key)) next-q)))
-            correct-answer-for-display (if correct?
-                                         user-answer
-                                         (:answer raw-q))]
+            correct-answer-for-display (cond
+                                         (nil? user-answer) nil
+                                         correct? user-answer
+                                         (not= game-key :matching) (:answer raw-q)
+                                         :else nil)]
 
         (log/info "Submit Answer: Game ID" game-key ", Correct?" correct? ", Completed?" (:completed? updated-state))
         {:correct? correct?

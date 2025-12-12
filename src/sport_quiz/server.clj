@@ -34,9 +34,13 @@
 
       :else
       (let [{:keys [correct? raw-question new-state]} res
-            correct-answer (when (false? correct?)
-                             (:answer raw-question))]
-        {:correct? correct?
+            correct-answer (if (true? correct?)
+                             nil
+                             (when (false? correct?)
+                               (:answer raw-question)))
+            final-correct? (if (nil? correct?) false correct?)]
+
+        {:correct? final-correct?
          :correct-answer correct-answer
          :state new-state}))))
 
