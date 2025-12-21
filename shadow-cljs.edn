@@ -1,5 +1,5 @@
 {:source-paths
- ["src"]
+ ["src-cljs"]
 
  :dependencies
  [[reagent "2.0.1"]
@@ -11,4 +11,4 @@
   {:target :browser
    :output-dir "resources/public/js"
    :asset-path "/js"
-   :modules {:main {:init-fn sport-quiz.frontend/init}}}}}
+   :modules {:main {:init-fn sport-quiz.core/init}}}}}
