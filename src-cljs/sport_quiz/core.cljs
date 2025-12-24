@@ -3,6 +3,7 @@
             [reagent.core :as r]
             [clojure.string :as str]
             [sport-quiz.state :as state :refer [normalize-game-id get-max-time]]
+            [sport-quiz.api :as api]
             [sport-quiz.components.classic-quiz :refer [classic-quiz-view]]
             [sport-quiz.components.matching-game :refer [matching-game-view]]
             [sport-quiz.components.common :refer [game-selection-button]]))
@@ -27,10 +28,16 @@
         (cond
           (nil? l-state)
           [:div {:class "text-center space-y-6"}
-           [:h2 {:class "text-2xl font-bold text-gray-700"} "Choose Game Mode: Singleplayer"]
-           [game-selection-button :equipment "1. Equipment Quiz (5 Q)" 5]
-           [game-selection-button :athlete "2. Athlete Quiz (10 Q)" 10]
-           [game-selection-button :matching "3. Matching Game (6 P)" 6]
+           [:h2 {:class "text-2xl font-bold text-gray-700"} "Singleplayer Mode"]
+           [:button {:on-click #(api/start-full-game)
+                     :class "bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-2xl text-2xl shadow-xl w-full mb-4 transition-transform hover:scale-[1.02]"}
+            "🚀 START FULL ADVENTURE"]
+           [:div {:class "relative py-4"}
+            [:div {:class "absolute inset-0 flex items-center"} [:div {:class "w-full border-t border-gray-300"}]]
+            [:div {:class "relative flex justify-center text-sm"} [:span {:class "px-2 bg-white text-gray-500"} "Or practice individual games"]]]
+           [game-selection-button :equipment "1. Equipment Quiz" 5]
+           [game-selection-button :athlete "2. Athlete Quiz" 10]
+           [game-selection-button :matching "3. Matching Game" 6]
            [:div {:class "mt-8"}
             [:button {:class "bg-gray-400 hover:bg-gray-500 text-white font-semibold py-3 px-6 rounded-xl text-xl w-full cursor-not-allowed opacity-75"}
              "4. Start Multiplayer (Coming Soon)"]]]

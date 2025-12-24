@@ -5,7 +5,6 @@
             [clojure.core :refer [shuffle]]
             [sport-quiz.state :as state :refer [normalize-game-id get-max-time]]))
 
-
 (defn stop-timer! []
   (when @state/timer-handle
     (js/clearInterval @state/timer-handle)
@@ -102,6 +101,31 @@
               delay-time)))
          :error-handler #(js/console.error "Timeout error:" %))})))
 
+
+(defn start-full-game []
+  (stop-timer!)
+  (reset! state/last-answer-correct? nil)
+  (reset! state/correct-answer nil)
+  (reset! state/last-chosen-answer nil)
+  (reset! state/time-remaining nil)
+  (reset-matching-atoms!)
+  (POST "/api/start-full"
+    {:format :json
+     :response-format (ajax/json-response-format {:keywords? true})
+     :handler (fn [resp]
+                (js/console.log "START-FULL: Game sequence started.")
+                (reset! state/session-id (:session-id resp))
+                (let [l-state (:state resp)
+                      game-id-k (normalize-game-id (:game-id l-state))]
+                  (when (= game-id-k :matching)
+                    (let [{:keys [prompts answers]} (:current-question l-state)]
+                      (reset! state/original-pairs-map (zipmap prompts answers))
+                      (reset! state/prompt-to-answer-map (zipmap prompts answers))
+                      (reset! state/shuffled-prompts-state (shuffle prompts))
+                      (reset! state/shuffled-answers-state (shuffle answers))))
+                  (reset! state/game-state l-state)
+                  (start-question-timer! (:game-id l-state))))
+     :error-handler #(js/console.error "Start full error:" %)}))
 
 (defn start-game [game-id n]
   (stop-timer!)

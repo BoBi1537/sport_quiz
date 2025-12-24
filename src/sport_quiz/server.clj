@@ -23,31 +23,21 @@
       (se/start-game-db g n))))
 
 (defn do-answer [{:keys [session-id answer]}]
-  (let [sid (Integer/parseInt (str session-id))
+  (let [sid (if (string? session-id) (Integer/parseInt session-id) session-id)
         res (se/submit-answer-db sid answer)]
     (cond
-      (nil? res)
-      {:error "Unknown session-id"}
-
-      (:error res)
+      (or (nil? res) (:error res))
       {:error "Unknown session-id"}
 
       :else
-      (let [{:keys [correct? raw-question new-state]} res
-            correct-answer (if (true? correct?)
-                             nil
-                             (when (false? correct?)
-                               (:answer raw-question)))
-            final-correct? (if (nil? correct?) false correct?)]
-
-        {:correct? final-correct?
+      (let [{:keys [correct? correct-answer new-state]} res]
+        {:correct? (boolean correct?)
          :correct-answer correct-answer
          :state new-state}))))
 
 (defroutes routes
   (GET "/" []
     (resp/resource-response "index.html" {:root "public"}))
-  
   (POST "/api/start" req
     (let [res (do-start (:body req))]
       {:status (if (:error res) 400 200)
@@ -56,6 +46,9 @@
     (let [res (do-answer (:body req))]
       {:status (if (:error res) 400 200)
        :body res}))
+  (POST "/api/start-full" []
+    (let [res (se/start-full-game-db)]
+      {:status 200 :body res}))
   (GET "/api/session/:id" [id]
     (let [sid (Integer/parseInt id)]
       (if-let [st (se/get-state-by-id sid)]
