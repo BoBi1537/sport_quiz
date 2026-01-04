@@ -21,49 +21,32 @@
 (defn app []
   (fn []
     (let [l-state @state/game-state
-          game-id-k (normalize-game-id (:game-id l-state))]
+          game-id-k (normalize-game-id (:game-id l-state))
+          display-total-score (+ (or @state/total-score 0) (or (:score l-state) 0))]
       [:div {:class "min-h-screen bg-gray-100 flex items-start justify-center p-4 sm:p-8 font-sans"}
        [:div {:class "w-full max-w-xl bg-white p-6 sm:p-10 rounded-2xl shadow-2xl"}
         [:h1 {:class "text-4xl font-extrabold text-center mb-8 text-indigo-600"} "Sport Quiz"]
         (cond
           (nil? l-state)
           [:div {:class "text-center space-y-6"}
-           [:h2 {:class "text-2xl font-bold text-gray-700"} "Singleplayer Mode"]
-           [:button {:on-click #(api/start-full-game)
-                     :class "bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-2xl text-2xl shadow-xl w-full mb-4 transition-transform hover:scale-[1.02]"}
-            "🚀 START FULL ADVENTURE"]
-           [:div {:class "relative py-4"}
-            [:div {:class "absolute inset-0 flex items-center"} [:div {:class "w-full border-t border-gray-300"}]]
-            [:div {:class "relative flex justify-center text-sm"} [:span {:class "px-2 bg-white text-gray-500"} "Or practice individual games"]]]
-           [game-selection-button :equipment "1. Equipment Quiz" 5]
-           [game-selection-button :athlete "2. Athlete Quiz" 10]
-           [game-selection-button :matching "3. Matching Game" 6]
-           [:div {:class "mt-8"}
-            [:button {:class "bg-gray-400 hover:bg-gray-500 text-white font-semibold py-3 px-6 rounded-xl text-xl w-full cursor-not-allowed opacity-75"}
-             "4. Start Multiplayer (Coming Soon)"]]]
-          (and (= game-id-k :matching) @state/matching-game-ended-locally)
-          [:div {:class "space-y-4"}
-           [:h2 {:class "text-xl font-bold text-indigo-500"}
-            (str "Game: " (str/capitalize (:game-id l-state))
-                 " - Score: " (:score l-state)
-                 " / " (:total l-state))]
-           [matching-game-view]
-           [:p {:class "mt-6 text-xl font-bold text-right text-gray-800"} (str "Current Time: " (or @state/time-remaining (get-max-time (:game-id l-state))) "s")]]
+           [:button {:on-click #(api/start-full-game) :class "..."} "🚀 START FULL ADVENTURE"]]
           (:completed? l-state)
           [:div {:class "text-center space-y-6"}
            [:h2 {:class "text-3xl font-extrabold text-green-600"} "Quiz Finished! 🎉"]
-           [:p {:class "text-2xl font-semibold text-gray-800"} (str "Final Score: " (:score l-state) " / " (:total l-state))]
-           [:button {:on-click #(reset! state/game-state nil)
-                     :class "bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 px-6 rounded-xl text-lg shadow-md transition-colors duration-200"}
-            "Go to Selection"]]
+           [:p {:class "text-2xl font-semibold text-gray-800"} (str "Total Adventure Score: " display-total-score)]
+           [:button {:on-click #(do (reset! state/game-state nil) (reset! state/total-score 0))
+                     :class "..."} "Go to Selection"]]
           :else
           [:div {:class "space-y-4"}
-           [:h2 {:class "text-xl font-bold text-indigo-500"}
-            (str "Game: " (str/capitalize (:game-id l-state))
-                 " - Score: " (:score l-state)
-                 " / " (:total l-state))]
+           [:div {:class "flex justify-between items-center"}
+            [:h2 {:class "text-xl font-bold text-indigo-500"}
+             (str "Game: " (str/capitalize (name (or game-id-k ""))))]
+            [:div {:class "text-sm font-bold bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full"}
+             (str "Level Score: " (:score l-state) " / " (:total l-state))]]
            [question-view]
-           [:p {:class "mt-6 text-xl font-bold text-right text-gray-800"} (str "Current Time: " (or @state/time-remaining (get-max-time (:game-id l-state))) "s")]])]])))
+           [:div {:class "mt-6 flex justify-between items-center border-t pt-4"}
+            [:div {:class "text-gray-500 font-medium"} "Total Adventure Score:"]
+            [:div {:class "text-2xl font-black text-indigo-600"} display-total-score]]])]])))
 
 (defn ^:export init []
   (let [tailwind-script (js/document.createElement "script")]

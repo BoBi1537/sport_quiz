@@ -14,22 +14,20 @@
 
 (defn start-question-timer! [game-id]
   (stop-timer!)
-  (let [max-time (get-max-time game-id)
-        current-game-id (normalize-game-id game-id)]
+  (let [current-game-id (normalize-game-id game-id)
+        max-time (get-max-time current-game-id)]
     (if max-time
-      (let [tr state/time-remaining
-            th state/timer-handle]
-        (reset! tr max-time)
-        (reset! th
+      (do
+        (reset! state/time-remaining max-time)
+        (reset! state/timer-handle
                 (js/setInterval
                  (fn []
-                   (swap! tr dec)
-                   (when (<= @tr 0)
-                     (js/clearInterval @th)
-                     (reset! th nil)
+                   (swap! state/time-remaining dec)
+                   (when (<= @state/time-remaining 0)
+                     (stop-timer!)
                      (if (= current-game-id :matching)
                        (do
-                         (js/console.log "MATCHING GAME: Time expired, auto-advance for game end.")
+                         (js/console.log "MATCHING TIME EXPIRED")
                          (reset! state/matching-game-ended-locally true)
                          (auto-advance))
                        (auto-advance))))
@@ -49,57 +47,50 @@
 (defn auto-advance []
   (stop-timer!)
   (let [sid @state/session-id
-        l-game-state state/game-state
-        current-game-id (normalize-game-id (:game-id @l-game-state))
+        old-game-state @state/game-state
+        current-game-id (normalize-game-id (:game-id old-game-state))
         answer (if (= current-game-id :matching) [] nil)
-        delay-time (if (= current-game-id :matching) state/matching-game-end-delay state/classic-quiz-next-question-delay)]
-    (js/console.log "AUTO-ADVANCE: Sending null answer for timeout.")
+        delay-time (if (= current-game-id :matching)
+                     state/matching-game-end-delay
+                     state/classic-quiz-next-question-delay)]
     (POST "/api/answer"
       {:params {:session-id sid :answer answer}
        :format :json
        :response-format (ajax/json-response-format {:keywords? true})
        :handler
-       (fn [{:keys [correct-answer state] :as resp}]
+       (fn [{:keys [correct-answer state]}]
          (let [new-state state
                new-game-id (normalize-game-id (:game-id new-state))]
-           (js/console.log "AUTO-ADVANCE: Server response received (Timeout). Completed?:" (:completed? new-state))
            (when-not (= current-game-id :matching)
              (reset! state/last-answer-correct? false)
              (reset! state/correct-answer correct-answer)
              (reset! state/last-chosen-answer "Timeout"))
-           (if (and (= current-game-id :matching) (:completed? new-state))
-             (do
-               (js/console.log "MATCHING GAME END (Timeout): Showing sorted pairs for" delay-time "ms.")
-               (js/setTimeout
-                (fn []
-                  (js/console.log "MATCHING GAME END: Transitioning to Final Score view.")
-                  (reset! state/matching-game-ended-locally false)
-                  (reset! l-game-state new-state))
-                delay-time))
-             (js/setTimeout
-              (fn []
-                (js/console.log "AUTO-ADVANCE: Timer expired. Attempting cleanup and transition.")
-                (reset! l-game-state new-state)
-                (if (:completed? new-state)
-                  (do
-                    (js/console.log "AUTO-ADVANCE: Quiz completed.")
-                    (stop-timer!))
-                  (if (and new-state (:current-question new-state))
+           (js/setTimeout
+            (fn []
+              (stop-timer!)
+              (reset! state/matching-game-ended-locally false)
+              (reset! state/last-answer-correct? nil)
+              (reset! state/last-chosen-answer nil)
+              (reset! state/correct-answer nil)
+              (when (or (:completed? new-state) (not= (:game-id old-game-state) (:game-id new-state)))
+                (reset! state/total-score (:total_cumulative_score new-state)))
+              (reset! state/game-state new-state)
+              (if (:completed? new-state)
+                (stop-timer!)
+                (do
+                  (if (not= new-game-id current-game-id)
                     (do
-                      (reset! state/last-answer-correct? nil)
-                      (reset! state/last-chosen-answer nil)
-                      (reset! state/correct-answer nil)
-                      (when-not (= new-game-id :matching)
-                        (reset-matching-atoms!))
+                      (reset-matching-atoms!)
                       (when (= new-game-id :matching)
                         (let [{:keys [prompts answers]} (:current-question new-state)]
+                          (reset! state/original-pairs-map (zipmap prompts answers))
                           (reset! state/prompt-to-answer-map (zipmap prompts answers))
                           (reset! state/shuffled-prompts-state (shuffle prompts))
-                          (reset! state/shuffled-answers-state (shuffle answers))))
-                      (start-question-timer! (:game-id new-state)))
-                    (js/console.error "AUTO-ADVANCE: ERROR! New state is invalid or missing current-question." new-state))))
-              delay-time)))
-         :error-handler #(js/console.error "Timeout error:" %))})))
+                          (reset! state/shuffled-answers-state (shuffle answers)))))
+                    (when (not= new-game-id :matching)
+                      (reset-matching-atoms!)))
+                  (start-question-timer! new-game-id))))
+            delay-time)))})))
 
 
 (defn start-full-game []
@@ -155,78 +146,60 @@
 
 (defn submit-answer [answer]
   (when-let [sid @state/session-id]
-    (let [is-matching-pair (and (vector? answer) (= 2 (count answer)))
-          l-game-state state/game-state
-          game-id (:game-id @l-game-state)]
-      (when-not is-matching-pair
-        (stop-timer!))
-      (if is-matching-pair
-        (do
-          (reset! state/last-chosen-answer answer)
-          (js/console.log "SUBMIT-MATCH: Submitting pair:" answer)
-          (POST "/api/answer"
-            {:params {:session-id sid :answer answer}
-             :format :json
-             :response-format (ajax/json-response-format {:keywords? true})
-             :handler
-             (fn [{:keys [correct? state] :as resp}]
-               (let [new-state state]
+    (let [l-game-state state/game-state
+          old-state @l-game-state
+          old-game-id (normalize-game-id (:game-id old-state))
+          is-matching-pair (and (vector? answer) (= 2 (count answer)))]
+      (when-not is-matching-pair (stop-timer!))
+      (POST "/api/answer"
+        {:params {:session-id sid :answer answer}
+         :format :json
+         :response-format (ajax/json-response-format {:keywords? true})
+         :handler
+         (fn [{:keys [correct? correct-answer state]}]
+           (let [new-state state
+                 new-game-id (normalize-game-id (:game-id new-state))]
+             (if is-matching-pair
+               (do
                  (reset! state/last-answer-correct? correct?)
                  (reset! state/selected-match-item nil)
-                 (reset! state/last-chosen-answer nil)
-                 (if correct?
+                 (when correct? (swap! state/solved-pairs-local conj answer))
+                 (when-not correct? (swap! state/wrongly-paired-prompts-local conj (first answer)))
+                 (if (or (:completed? new-state) (not= new-game-id old-game-id))
                    (do
-                     (js/console.log "MATCH: Correct pair found. Storing locally.")
-                     (swap! state/solved-pairs-local conj answer)
-                     (if (:completed? new-state)
-                       (do
-                         (stop-timer!)
-                         (reset! state/game-state new-state)
-                         (reset! state/matching-game-ended-locally true)
-                         (js/console.log "MATCHING GAME COMPLETED: Showing sorted pairs for" state/matching-game-end-delay "ms.")
-                         (js/setTimeout
-                          (fn []
-                            (js/console.log "MATCHING GAME END: Transitioning to Final Score view.")
-                            (reset! state/matching-game-ended-locally false)
-                            (reset! l-game-state new-state))
-                          state/matching-game-end-delay))
-                       (reset! l-game-state new-state)))
-                   (do
-                     (swap! state/wrongly-paired-prompts-local conj (first answer))
-                     (reset! l-game-state new-state)
-                     (when (:completed? new-state)
-                       (stop-timer!)
-                       (reset! state/matching-game-ended-locally true)
-                       (js/console.log "MATCHING GAME COMPLETED (on Wrong Answer): Showing sorted pairs.")
-                       (js/setTimeout
-                        (fn []
-                          (reset! state/matching-game-ended-locally false)
-                          (reset! l-game-state new-state))
-                        state/matching-game-end-delay))))))
-             :error-handler #(js/console.error "Match error:" %)}))
-        (do
-          (reset! state/last-chosen-answer answer)
-          (let [l-correct-answer state/correct-answer]
-            (POST "/api/answer"
-              {:params {:session-id sid :answer answer}
-               :format :json
-               :response-format (ajax/json-response-format {:keywords? true})
-               :handler
-               (fn [{:keys [correct? correct-answer state] :as resp}]
-                 (let [new-state state]
-                   (reset! state/last-answer-correct? correct?)
-                   (reset! l-correct-answer (if correct? answer correct-answer))
-                   (reset! state/time-remaining nil)
-                   (if-not (:completed? new-state)
+                     (stop-timer!)
+                     (reset! state/matching-game-ended-locally true)
                      (js/setTimeout
                       (fn []
-                        (reset! l-game-state new-state)
+                        (reset! state/matching-game-ended-locally false)
                         (reset! state/last-answer-correct? nil)
                         (reset! state/last-chosen-answer nil)
-                        (reset! state/correct-answer nil)
-                        (start-question-timer! game-id))
-                      state/classic-quiz-next-question-delay)
-                     (js/setTimeout
-                      #(reset! l-game-state new-state)
-                      state/classic-quiz-next-question-delay))))
-               :error-handler #(js/console.error "Submit error:" %)})))))))
+                        (reset! state/total-score (:total_cumulative_score new-state))
+                        (reset! l-game-state new-state)
+                        (when-not (:completed? new-state)
+                          (start-question-timer! new-game-id)))
+                      state/matching-game-end-delay))
+                   (reset! l-game-state new-state)))
+               (do
+                 (reset! state/last-answer-correct? correct?)
+                 (reset! state/correct-answer correct-answer)
+                 (reset! state/last-chosen-answer answer)
+                 (js/setTimeout
+                  (fn []
+                    (reset! state/last-answer-correct? nil)
+                    (reset! state/last-chosen-answer nil)
+                    (reset! state/correct-answer nil)
+                    (when (not= new-game-id old-game-id)
+                      (reset! state/total-score (:total_cumulative_score new-state))
+                      (reset-matching-atoms!)
+                      (when (= new-game-id :matching)
+                        (let [{:keys [prompts answers]} (:current-question new-state)]
+                          (reset! state/original-pairs-map (zipmap prompts answers))
+                          (reset! state/shuffled-prompts-state (shuffle prompts))
+                          (reset! state/shuffled-answers-state (shuffle answers)))))
+                    (reset! l-game-state new-state)
+                    (if (:completed? new-state)
+                      (stop-timer!)
+                      (start-question-timer! new-game-id)))
+                  state/classic-quiz-next-question-delay)))))
+         :error-handler #(js/console.error "Submit error:" %)}))))
