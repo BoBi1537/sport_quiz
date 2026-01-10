@@ -18,6 +18,7 @@
 (defonce solved-pairs-local (r/atom #{}))
 (defonce wrongly-paired-prompts-local (r/atom #{}))
 (defonce total-score (r/atom 0))
+(defonce dark-mode? (r/atom false))
 
 (def max-time-equipment 10)
 (def max-time-athlete 15)

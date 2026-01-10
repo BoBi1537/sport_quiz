@@ -1,5 +1,5 @@
-(defproject sport-quiz "0.1.0-SNAPSHOT"
-  :description "Sport Quiz - Clojure web + cljs game"
+(defproject sport-quiz "1.0.0"
+  :description "Sport Quiz Web Application game"
   :url "http://localhost:3000"
 
   :dependencies [[org.clojure/clojure "1.12.3"]

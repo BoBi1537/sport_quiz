@@ -7,6 +7,7 @@
 (defn classic-quiz-view []
   (fn []
     (let [state-val @state/game-state
+          dark? @state/dark-mode?
           q (:current-question state-val)]
       (when q
         (let [chosen @state/last-chosen-answer
@@ -17,32 +18,33 @@
               img-match (re-find #"[A-Za-z0-9_-]+\.(png|jpg|jpeg|gif)" prompt-text)
               img (if (vector? img-match) (first img-match) img-match)
               time @state/time-remaining]
-          [:div {:class "space-y-6"}
+          [:div {:class "space-y-4"}
            [progress-bar state-val]
-           [time-remaining-view time]
+           [time-remaining-view time (:game-id state-val)]
            (when img
-             [:div {:class "text-center my-6"}
+             [:div {:class "text-center my-4 animate-in fade-in zoom-in duration-500"}
               [:img {:src (str "/images/" img)
-                     :class "max-h-60 max-w-full mx-auto border-2 border-gray-300 rounded-lg shadow-md"
-                     :alt "Question equipment"}]])
-           [:h3 {:class "text-xl font-semibold text-center text-gray-800"}
+                     :class (str "max-h-52 w-auto mx-auto rounded-2xl shadow-lg border-4 "
+                                 (if dark? "border-gray-700" "border-white"))
+                     :alt "Question"}]])
+           [:h3 {:class "text-2xl font-bold text-center leading-tight mb-6"}
             (str/replace prompt-text #"[A-Za-z0-9_-]+\.(png|jpg|jpeg|gif)\?" "")]
-           (when is-answered?
-             [:div {:class (str "p-3 text-lg font-bold text-white rounded-lg mb-4 shadow-md "
-                                (if is-actually-correct? "bg-green-500" "bg-red-500"))}
-              (if is-actually-correct?
-                "Correct! Well done!"
-                (str "Wrong! Correct answer was: " correct-display))])
-           [:div {:class "grid grid-cols-1 gap-4"}
+           [:div {:class "grid grid-cols-1 gap-3"}
             (for [opt (:options q)]
               (let [is-this-correct-opt (= opt correct-display)
                     is-this-chosen-opt (= opt chosen)
-                    button-class (cond-> "w-full py-4 px-6 text-lg font-medium rounded-xl transition-all duration-200 shadow-md transform"
-                                   (not is-answered?) (str " bg-white text-gray-800 border-2 border-indigo-200 hover:bg-indigo-100 hover:scale-[1.02] ")
+                    button-class (cond-> "w-full py-4 px-6 text-lg font-bold rounded-2xl transition-all duration-300 shadow-sm "
+                                   (not is-answered?)
+                                   (str (if dark? " bg-gray-700 hover:bg-gray-600 text-white "
+                                            " bg-white text-gray-800 border-2 border-gray-100 hover:border-indigo-200 hover:bg-indigo-50 ")
+                                        " hover:translate-y-[-2px] ")
                                    is-answered? (str " cursor-not-allowed ")
-                                   (and is-answered? is-this-correct-opt) (str " !bg-green-500 !text-white !shadow-lg !shadow-green-300 ")
-                                   (and is-answered? is-this-chosen-opt (not is-actually-correct?)) (str " !bg-red-500 !text-white !shadow-lg !shadow-red-300 ")
-                                   (and is-answered? (not is-this-correct-opt) (not (and is-this-chosen-opt (not is-actually-correct?)))) (str " opacity-50 bg-gray-100 text-gray-500"))]
+                                   (and is-answered? is-this-correct-opt)
+                                   (str " !bg-green-500 !text-white !scale-105 shadow-green-500/50 ")
+                                   (and is-answered? is-this-chosen-opt (not is-actually-correct?))
+                                   (str " !bg-red-500 !text-white animate-shake ")
+                                   (and is-answered? (not is-this-correct-opt) (not (and is-this-chosen-opt (not is-actually-correct?))))
+                                   (str " opacity-40 " (if dark? "bg-gray-800" "bg-gray-50 text-gray-400")))]
                 ^{:key opt}
                 [:button {:on-click #(api/submit-answer opt)
                           :disabled is-answered?

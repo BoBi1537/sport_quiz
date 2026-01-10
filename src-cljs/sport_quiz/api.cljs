@@ -11,7 +11,6 @@
     (reset! state/timer-handle nil)))
 
 (declare auto-advance)
-
 (defn start-question-timer! [game-id]
   (stop-timer!)
   (let [current-game-id (normalize-game-id game-id)
