@@ -24,27 +24,29 @@
            (when img
              [:div {:class "text-center my-4 animate-in fade-in zoom-in duration-500"}
               [:img {:src (str "/images/" img)
-                     :class (str "max-h-52 w-auto mx-auto rounded-2xl shadow-lg border-4 "
-                                 (if dark? "border-gray-700" "border-white"))
+                     :class (str "max-h-52 w-auto mx-auto rounded-3xl shadow-2xl border-4 "
+                                 (if dark? "border-gray-800" "border-white"))
                      :alt "Question"}]])
-           [:h3 {:class "text-2xl font-bold text-center leading-tight mb-6"}
+           [:h3 {:class "text-2xl font-bold text-center leading-tight mb-8"}
             (str/replace prompt-text #"[A-Za-z0-9_-]+\.(png|jpg|jpeg|gif)\?" "")]
-           [:div {:class "grid grid-cols-1 gap-3"}
+           [:div {:class "grid grid-cols-1 gap-4"}
             (for [opt (:options q)]
               (let [is-this-correct-opt (= opt correct-display)
                     is-this-chosen-opt (= opt chosen)
-                    button-class (cond-> "w-full py-4 px-6 text-lg font-bold rounded-2xl transition-all duration-300 shadow-sm "
+                    button-class (cond-> "w-full py-5 px-6 text-lg font-black rounded-2xl transition-all duration-300 shadow-sm border-b-4 "
                                    (not is-answered?)
-                                   (str (if dark? " bg-gray-700 hover:bg-gray-600 text-white "
-                                            " bg-white text-gray-800 border-2 border-gray-100 hover:border-indigo-200 hover:bg-indigo-50 ")
+                                   (str (if dark? " bg-gray-800 border-gray-950 hover:bg-gray-700 text-white "
+                                            " bg-white text-gray-800 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 ")
                                         " hover:translate-y-[-2px] ")
                                    is-answered? (str " cursor-not-allowed ")
-                                   (and is-answered? is-this-correct-opt)
-                                   (str " !bg-green-500 !text-white !scale-105 shadow-green-500/50 ")
+                                   (and is-answered? (or is-this-correct-opt (and is-this-chosen-opt is-actually-correct?)))
+                                   (str " !bg-green-500 !border-green-700 !text-white !scale-105 shadow-green-500/50 ")
                                    (and is-answered? is-this-chosen-opt (not is-actually-correct?))
-                                   (str " !bg-red-500 !text-white animate-shake ")
-                                   (and is-answered? (not is-this-correct-opt) (not (and is-this-chosen-opt (not is-actually-correct?))))
-                                   (str " opacity-40 " (if dark? "bg-gray-800" "bg-gray-50 text-gray-400")))]
+                                   (str " !bg-red-500 !border-red-700 !text-white animate-shake ")
+                                   (and is-answered?
+                                        (not (or is-this-correct-opt (and is-this-chosen-opt is-actually-correct?)))
+                                        (not (and is-this-chosen-opt (not is-actually-correct?))))
+                                   (str " opacity-30 " (if dark? "bg-gray-800 border-transparent" "bg-gray-50 text-gray-400 border-transparent")))]
                 ^{:key opt}
                 [:button {:on-click #(api/submit-answer opt)
                           :disabled is-answered?
